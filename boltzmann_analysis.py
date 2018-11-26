@@ -25,10 +25,10 @@ class BoltzmannDump(Dump):
     def number_density(self):
         f = self.value('f')
         domega = self.value('domega')[None,None,None,None,:,:]
-        eps = self.value('eps')[None,None,None,:,None,None]
         eps_if = self.value('eps_if')
-        deps = (eps_if[1:] - eps_if[:-1])[None,None,None,:,None,None]
-        j = np.sum(f * domega * eps**2 * deps, axis = (3,4,5))
+        # Note: eps**2 * deps = (4/3) * (eps_if[1]**3 - eps_if[0]**3)
+        epsvol = ( (4.0/3.0) * (eps_if[1:]**3 - eps_if[:-1]**3) )[None,None,None,:,None,None]
+        j = np.sum(f * domega * epsvol, axis = (3,4,5))
         return j
 
     def zeroth_number_moment(self):
@@ -39,8 +39,8 @@ class BoltzmannDump(Dump):
         domega = self.value('domega')[None,None,None,None,:,:]
         eps = self.value('eps')[None,None,None,:,None,None]
         eps_if = self.value('eps_if')
-        deps = (eps_if[1:] - eps_if[:-1])[None,None,None,:,None,None]
-        j = np.sum(f * domega * eps**3 * deps, axis = (3,4,5))
+        epsvol = ( (4.0/3.0) * (eps_if[1:]**3 - eps_if[:-1]**3) )[None,None,None,:,None,None]
+        j = np.sum(f * domega * eps * epsvol, axis = (3,4,5))
         return j
 
     def zeroth_energy_moment(self):
@@ -52,8 +52,8 @@ class BoltzmannDump(Dump):
         domega = self.value('domega')[None,None,None,None,:,:]
         eps = self.value('eps')[None,None,None,:,None,None]
         eps_if = self.value('eps_if')
-        deps = (eps_if[1:] - eps_if[:-1])[None,None,None,:,None,None]
-        return np.sum(f * mu * domega * eps**3 * deps, axis = (3,4,5)) / (4.0 * np.pi)
+        epsvol = ( (4.0/3.0) * (eps_if[1:]**3 - eps_if[:-1]**3) )[None,None,None,:,None,None]
+        return np.sum(f * mu * domega * eps * epsvol, axis = (3,4,5)) / (4.0 * np.pi)
 
     def derived_value(self, name):
         return getattr(self, name)()
