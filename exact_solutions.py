@@ -3,10 +3,9 @@ Exact solutions
 '''
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 class RadiatingSphere:
-    def __init__(self, r_sphere, kappa_a_sphere, f_eq_sphere, nmu = 1000):
+    def __init__(self, r_sphere, kappa_a_sphere, f_eq_sphere, nmu=1000):
         self.r_sphere = r_sphere
         self.kappa_a_sphere = kappa_a_sphere
         self.f_eq_sphere = f_eq_sphere
@@ -19,13 +18,13 @@ class RadiatingSphere:
         h = 0.0
         k = 0.0
 
-        for i in range(nmu-1):
-            intensity = self.intensity(r, mu_range[i], r_sphere, kappa_a_sphere, f_eq_sphere)
-            dmu = 2.0 / float(nmu)
-            stl = np.sqrt(1.0 - mu_range[i]**2)
-            str = np.sqrt(1.0 - mu_range[i+1]**2)
-            st = 0.5*(stl+str)
-            ds = np.sqrt((stl-str)**2 + dmu**2)
+        for i in range(self.nmu-1):
+            intensity = self.intensity(r, mu_range[i])
+            dmu = 2.0 / float(self.nmu)
+            st_l = np.sqrt(1.0 - mu_range[i]**2)
+            st_r = np.sqrt(1.0 - mu_range[i+1]**2)
+            st = 0.5*(st_l+st_r)
+            ds = np.sqrt((st_l-st_r)**2 + dmu**2)
             domega = st * ds
             j += intensity * domega
             h += intensity * domega * mu_range[i]
@@ -37,17 +36,17 @@ class RadiatingSphere:
 
         return j, h, k
 
-    def intensity(self, r):
-        if r < r_sphere:
-            s = r * mu + r_sphere * g(r, r_sphere, mu)
+    def intensity(self, r, mu):
+        if r < self.r_sphere:
+            s = r * mu + self.r_sphere * self.g(r, mu)
         else:
-            x = np.sqrt(1.0 - (r_sphere/r)**2)
+            x = np.sqrt(1.0 - (self.r_sphere/r)**2)
             if x <= mu:
-                s = 2.0 * r_sphere * g(r, r_sphere, mu)
+                s = 2.0 * self.r_sphere * self.g(r, mu)
             else:
                 s = 0.0
 
-    return f_eq_sphere * (1.0 - np.exp(-kappa_a_sphere * s))
+        return self.f_eq_sphere * (1.0 - np.exp(-self.kappa_a_sphere * s))
 
-    def g(r, r_sphere, mu):
-        return np.sqrt(1.0 - (r/r_sphere)**2 * (1.0-mu**2))
+    def g(self, r, mu):
+        return np.sqrt(1.0 - (r/self.r_sphere)**2 * (1.0-mu**2))
