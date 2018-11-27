@@ -84,7 +84,7 @@ class BoltzmannRun:
             assert ind == i, 'Files out of order'
             self.dump += [dump]
 
-    def plot_spatial(self, y, index, direction=1):
+    def plot_spatial(self, y, index, direction=1, norm_radius=None):
         '''Plot y against spatial coordinate'''
 
         dump = self.dump[index]
@@ -99,6 +99,10 @@ class BoltzmannRun:
             yval = dump.derived_value(y).mean(axis=(0,1))
         else:
             print('Invalid direction, must be 1, 2, or 3')
+
+        if norm_radius is not None:
+            assert isinstance(norm_radius, float)
+            yval = yval / (4.0 * np.maximum(dump.value('r') - norm_radius, 0.0))
 
         xval = dump.value(x)
 
