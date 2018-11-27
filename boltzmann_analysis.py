@@ -55,6 +55,23 @@ class BoltzmannDump(Dump):
         epsvol = ( (4.0/3.0) * (eps_if[1:]**3 - eps_if[:-1]**3) )[None,None,None,:,None,None]
         return np.sum(f * mu * domega * eps * epsvol, axis = (3,4,5)) / (4.0 * np.pi)
 
+    def luminosity(self):
+        r = self.value('r')[:,None,None]
+        return 16.0 * np.pi**2 * r**2 * self.energy_flux_density_radial()
+
+    def luminosity_lab(self):
+        vfluid_r = self.value('vfluid')[:,:,:,0]
+        print(self.value('vfluid').shape)
+        return self.luminosity() * (1.0 + vfluid_r) / (1.0 - vfluid_r)
+
+    def gamma(self):
+        vfluid = self.value('vfluid')
+        clight = float(self.value('clight'))
+
+        beta2 = (vfluid / clight)**2
+        gamma = 1.0 / np.sqrt(1.0 - beta2)
+        return gamma
+
     def derived_value(self, name):
         return getattr(self, name)()
 
@@ -84,7 +101,7 @@ class BoltzmannRun:
             assert ind == i, 'Files out of order'
             self.dump += [dump]
 
-    def plot_spatial(self, y, index, direction=1, norm_radius=None):
+    def plot_spatial(self, y, index, direction=1):
         '''Plot y against spatial coordinate'''
 
         dump = self.dump[index]
@@ -99,10 +116,6 @@ class BoltzmannRun:
             yval = dump.derived_value(y).mean(axis=(0,1))
         else:
             print('Invalid direction, must be 1, 2, or 3')
-
-        if norm_radius is not None:
-            assert isinstance(norm_radius, float)
-            yval = yval / (4.0 * np.maximum(dump.value('r') - norm_radius, 0.0))
 
         xval = dump.value(x)
 
