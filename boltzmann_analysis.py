@@ -46,6 +46,14 @@ class BoltzmannDump(Dump):
     def zeroth_energy_moment(self):
         return self.energy_density() / (4.0 * np.pi)
 
+    def number_flux_density_radial(self):
+        f = self.value('f')
+        mu = self.value('mu')[None,None,None,None,:,None]
+        domega = self.value('domega')[None,None,None,None,:,:]
+        eps_if = self.value('eps_if')
+        epsvol = ( (4.0/3.0) * (eps_if[1:]**3 - eps_if[:-1]**3) )[None,None,None,:,None,None]
+        return np.sum(f * mu * domega * epsvol, axis = (3,4,5)) / (4.0 * np.pi)
+
     def energy_flux_density_radial(self):
         f = self.value('f')
         mu = self.value('mu')[None,None,None,None,:,None]
@@ -55,22 +63,34 @@ class BoltzmannDump(Dump):
         epsvol = ( (4.0/3.0) * (eps_if[1:]**3 - eps_if[:-1]**3) )[None,None,None,:,None,None]
         return np.sum(f * mu * domega * eps * epsvol, axis = (3,4,5)) / (4.0 * np.pi)
 
-    def luminosity(self):
+    def energy_luminosity(self):
         r = self.value('r')[:,None,None]
         return 16.0 * np.pi**2 * r**2 * self.energy_flux_density_radial()
 
-    def luminosity_lab(self):
+    def energy_luminosity_lab(self):
         vfluid_r = self.value('vfluid')[:,:,:,0]
-        print(self.value('vfluid').shape)
-        return self.luminosity() * (1.0 + vfluid_r) / (1.0 - vfluid_r)
+        return self.energy_luminosity() * (1.0 + vfluid_r) / (1.0 - vfluid_r)
+
+    def number_luminosity(self):
+        r = self.value('r')[:,None,None]
+        return 16.0 * np.pi**2 * r**2 * self.number_flux_density_radial()
+
+    def number_luminosity_lab(self):
+        vfluid_r = self.value('vfluid')[:,:,:,0]
+        return self.number_luminosity() * self.gamma() * (1.0 + vfluid_r)
 
     def gamma(self):
         vfluid = self.value('vfluid')
         clight = float(self.value('clight'))
-
-        beta2 = (vfluid / clight)**2
+        beta2 = np.sum((vfluid / clight)**2, axis=3)
         gamma = 1.0 / np.sqrt(1.0 - beta2)
         return gamma
+
+    def spectrum(self):
+        f = self.value('f')
+        domega = self.value('domega')[None,None,None,None,:,:]
+
+        return np.sum(f * domega, axis = (4,5)) / (4.0 * np.pi)
 
     def derived_value(self, name):
         return getattr(self, name)()
@@ -105,17 +125,7 @@ class BoltzmannRun:
         '''Plot y against spatial coordinate'''
 
         dump = self.dump[index]
-        if direction==1:
-            x = 'r'
-            yval = dump.derived_value(y).mean(axis=(1,2))
-        elif direction==2:
-            x = 'theta'
-            yval = dump.derived_value(y).mean(axis=(0,2))
-        elif direction==3:
-            x = 'phi'
-            yval = dump.derived_value(y).mean(axis=(0,1))
-        else:
-            print('Invalid direction, must be 1, 2, or 3')
+        yval, x = self._select_axis(dump.derived_value(y), direction)
 
         xval = dump.value(x)
 
@@ -125,6 +135,38 @@ class BoltzmannRun:
         plt.ylabel(y)
 
         plt.legend(title='time')
+
+    def plot_spectrum(self, index, direction=1):
+        '''Plot spectrum against spatial coordinate'''
+
+        dump = self.dump[index]
+        yval, x = self._select_axis(dump.spectrum(), direction)
+
+        xval = dump.value(x)
+        eps = dump.eps
+
+        for i, e in enumerate(eps):
+            plt.plot(xval, yval[:,i], label=e)
+
+        plt.legend(title='energy')
+        plt.xlabel(x)
+        plt.ylabel('f')
+
+    @staticmethod
+    def _select_axis(vals, direction):
+        if direction==1:
+            x = 'r'
+            yval = vals.mean(axis=(1,2))
+        elif direction==2:
+            x = 'theta'
+            yval = vals.mean(axis=(0,2))
+        elif direction==3:
+            x = 'phi'
+            yval = vals.mean(axis=(0,1))
+        else:
+            print('Invalid direction, must be 1, 2, or 3')
+
+        return yval, x
 
 
     def __getitem__(self, val):
