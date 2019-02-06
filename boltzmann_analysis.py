@@ -205,6 +205,23 @@ class BoltzmannRun:
         plt.xlabel(x)
         plt.ylabel('f')
 
+    def plot_mu_distribution(self, index):
+        '''Plot each of the mu bins'''
+        dump = self.dump[index]
+
+        f = dump.f
+        nmu = f.shape[4]
+
+        f_av = np.mean(f, axis=(1,2,3,5))
+
+        for i in range(nmu):
+            plt.plot(f_av[:,i], label = f'{dump.mu[i]:0.2f}')
+
+        plt.xlabel('r')
+        plt.ylabel('f')
+
+        plt.legend()
+
     def plot_moments(self, index, show_exact=True):
         '''Plot the moments, with an option to compare with exact solution for radiating sphere'''
         dump = self.dump[index]
