@@ -19,7 +19,7 @@ class RadiatingSphere:
         k = 0.0
 
         for i in range(self.nmu-1):
-            intensity = self.intensity(r, mu_range[i])
+            intensity = self.intensity(r, 0.5*(mu_range[i]+mu_range[i+1]))
             dmu = 2.0 / float(self.nmu)
             st_l = np.sqrt(1.0 - mu_range[i]**2)
             st_r = np.sqrt(1.0 - mu_range[i+1]**2)

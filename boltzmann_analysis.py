@@ -30,10 +30,13 @@ class Dump:
 
 class BoltzmannDump(Dump):
     def cross_section_r(self):
-        r_if = self.value('r_if')[:,None,None]
-        area_r = self.value('area_r')
-        # Cross section (aera_r) at the center of the cell
-        cs = 0.25 * area_r[:-1,:,:] + 0.25 * area_r[1:,:,:] + 0.5 * area_r[1:,:,:] * r_if[:-1,:,:] / r_if[1:,:,:]
+        # r_if = self.value('r_if')[:,None,None]
+        # area_r = self.value('area_r')
+        # Cross section (area_r) at the center of the cell
+        # cs = 0.25 * area_r[:-1,:,:] + 0.25 * area_r[1:,:,:] + 0.5 * area_r[1:,:,:] * r_if[:-1,:,:] / r_if[1:,:,:]
+
+        cs = 4.0*np.pi*self.value('r')[:,None,None,None]**2
+
         return cs
 
     def epsvol(self):
@@ -43,8 +46,8 @@ class BoltzmannDump(Dump):
 
     def number_density(self):
         f = self.value('f')
-        domega = self.value('domega')[None,None,None,None,:,:]
-        epsvol = self.epsvol()[None,None,None,:,None,None]
+        domega = self.value('domega')[None,None,None,None,:,:,None]
+        epsvol = self.epsvol()[None,None,None,:,None,None,None]
 
         return np.sum(f * domega * epsvol, axis = (3,4,5))
 
@@ -53,23 +56,23 @@ class BoltzmannDump(Dump):
 
     def first_number_moment(self):
         f = self.value('f')
-        domega = self.value('domega')[None,None,None,None,:,:]
-        epsvol = self.epsvol()[None,None,None,:,None,None]
-        mu = self.value('mu')[None,None,None,None,:,None]
+        domega = self.value('domega')[None,None,None,None,:,:,None]
+        epsvol = self.epsvol()[None,None,None,:,None,None,None]
+        mu = self.value('mu')[None,None,None,None,:,None,None]
         return np.sum(f * domega * epsvol * mu, axis = (3,4,5)) / (4.0 * np.pi)
 
     def second_number_moment(self):
         f = self.value('f')
-        domega = self.value('domega')[None,None,None,None,:,:]
-        epsvol = self.epsvol()[None,None,None,:,None,None]
-        mu = self.value('mu')[None,None,None,None,:,None]
+        domega = self.value('domega')[None,None,None,None,:,:,None]
+        epsvol = self.epsvol()[None,None,None,:,None,None,None]
+        mu = self.value('mu')[None,None,None,None,:,None,None]
         return np.sum(f * domega * epsvol * mu**2, axis = (3,4,5)) / (4.0 * np.pi)
 
     def energy_density(self):
         f = self.value('f')
-        domega = self.value('domega')[None,None,None,None,:,:]
-        eps = self.value('eps')[None,None,None,:,None,None]
-        epsvol = self.epsvol()[None,None,None,:,None,None]
+        domega = self.value('domega')[None,None,None,None,:,:,None]
+        eps = self.value('eps')[None,None,None,:,None,None,None]
+        epsvol = self.epsvol()[None,None,None,:,None,None,None]
         j = np.sum(f * domega * eps * epsvol, axis = (3,4,5))
         return j
 
@@ -78,17 +81,17 @@ class BoltzmannDump(Dump):
 
     def number_flux_density_radial(self):
         f = self.value('f')
-        mu = self.value('mu')[None,None,None,None,:,None]
-        domega = self.value('domega')[None,None,None,None,:,:]
-        epsvol = self.epsvol()[None,None,None,:,None,None]
+        mu = self.value('mu')[None,None,None,None,:,None,None]
+        domega = self.value('domega')[None,None,None,None,:,:,None]
+        epsvol = self.epsvol()[None,None,None,:,None,None,None]
         return np.sum(f * mu * domega * epsvol, axis = (3,4,5)) / (4.0 * np.pi)
 
     def energy_flux_density_radial(self):
         f = self.value('f')
-        mu = self.value('mu')[None,None,None,None,:,None]
-        domega = self.value('domega')[None,None,None,None,:,:]
-        eps = self.value('eps')[None,None,None,:,None,None]
-        epsvol = self.epsvol()[None,None,None,:,None,None]
+        mu = self.value('mu')[None,None,None,None,:,None,None]
+        domega = self.value('domega')[None,None,None,None,:,:,None]
+        eps = self.value('eps')[None,None,None,:,None,None,None]
+        epsvol = self.epsvol()[None,None,None,:,None,None,None]
         return np.sum(f * mu * domega * eps * epsvol, axis = (3,4,5)) / (4.0 * np.pi)
 
     def energy_luminosity(self):
@@ -97,17 +100,18 @@ class BoltzmannDump(Dump):
 
     def energy_luminosity_lab(self):
         vfluid_r = self.value('vfluid')[:,:,:,0]
-        return self.energy_luminosity() * (1.0 + vfluid_r) / (1.0 - vfluid_r)
+        factor = (1.0 + vfluid_r) / (1.0 - vfluid_r)
+        return self.energy_luminosity() * factor[:,None]
 
     def number_luminosity(self):
-        r = self.value('r')[:,None,None]
-        r_if = self.value('r_if')[:,None,None]
         # return 16.0 * np.pi**2 * r**2 * self.number_flux_density_radial()
         return 4.0 * np.pi * self.cross_section_r() * self.number_flux_density_radial()
 
     def number_luminosity_lab(self):
         vfluid_r = self.value('vfluid')[:,:,:,0]
-        return self.number_luminosity() * self.gamma() * (1.0 + vfluid_r)
+        factor = self.gamma() * (1.0 + vfluid_r)
+
+        return self.number_luminosity() * factor[:,None]
 
     def gamma(self):
         vfluid = self.value('vfluid')
@@ -118,32 +122,42 @@ class BoltzmannDump(Dump):
 
     def spectrum(self):
         f = self.value('f')
-        domega = self.value('domega')[None,None,None,None,:,:]
+        domega = self.value('domega')[None,None,None,None,:,:,None]
 
         return np.sum(f * domega, axis = (4,5)) / (4.0 * np.pi)
 
     def radiating_sphere_exact_solution(self):
-        i_sphere = self.value('kappa_a').max(axis=3).argmin()-1
-        r_sphere = self.value('r')[i_sphere]
-        kappa_a_sphere = self.value('kappa_a').max()
-        f_eq_sphere = self.value('f_eq').max()
+        kappa_a = self.value('kappa_a')
+        f_eq = self.value('f_eq')
 
         eps_if = self.value('eps_if')
         epsvol = ( (4.0/3.0) * (eps_if[1:]**3 - eps_if[:-1]**3) )
-        i_energy = np.argmax(self.value('kappa_a')[0,0,0,:])
-        f_eq_sphere *= epsvol[i_energy]
 
-        sol = RadiatingSphere(r_sphere, kappa_a_sphere, f_eq_sphere)
+        r = self.value('r')
 
-        moments = np.zeros((len(self.value('r')), 3))
+        ngrid = 4 * len(r)
+        rgrid = np.linspace(r[0], r[-1], ngrid)
 
-        for i, r in enumerate(self.value('r')):
-            j, h, k = sol.moments(r)
-            moments[i,0] = j
-            moments[i,1] = h
-            moments[i,2] = k
+        moments = np.zeros((self.nflav, ngrid, 3))
 
-        return moments
+        for l in range(self.nflav):
+            i_sphere = kappa_a[...,l].max(axis=3).argmin()-1
+            r_sphere = self.value('r')[i_sphere]
+            kappa_a_sphere = kappa_a[...,l].max()
+            f_eq_sphere = f_eq[...,l].max()
+
+            i_energy = np.argmax(kappa_a[0,0,0,:,l])
+            f_eq_sphere *= epsvol[i_energy]
+
+            sol = RadiatingSphere(r_sphere, kappa_a_sphere, f_eq_sphere)
+
+            for i, r in enumerate(rgrid):
+                j, h, k = sol.moments(r)
+                moments[l,i,0] = j
+                moments[l,i,1] = h
+                moments[l,i,2] = k
+
+        return rgrid, moments
 
     def derived_value(self, name):
         return getattr(self, name)()
@@ -155,12 +169,15 @@ class BoltzmannDump(Dump):
         return f'BoltzmannDump({self.filename})'
 
 class BoltzmannRun:
-    def __init__(self, run_path, file_extension='h5'):
+    def __init__(self, run_path, file_extension='h5', search_pattern=None):
         self.run_path = run_path
         self.file_extension = file_extension
 
         # Look for dump files in directory
-        search_path = os.path.join(self.run_path, f'*.{self.file_extension}')
+        if search_pattern is None:
+            search_path = os.path.join(self.run_path, f'*.{self.file_extension}')
+        else:
+            search_path = os.path.join(self.run_path, search_pattern)
         self.dump_files = sorted(glob(search_path))
 
         self.load_dumps()
@@ -168,10 +185,13 @@ class BoltzmannRun:
     def load_dumps(self):
         '''Generate the index for dump files'''
         self.dump = []
+        current_index = -1
         for i, file in enumerate(self.dump_files):
             dump = BoltzmannDump(file)
             ind = int(dump.value('index'))
-            assert ind == i, 'Files out of order'
+            assert ind > current_index, 'Files out of order'
+            current_index = ind
+            dump.nflav = dump.value('f').shape[6]
             self.dump += [dump]
 
     def plot_spatial(self, y, index, direction=1):
@@ -205,7 +225,7 @@ class BoltzmannRun:
         plt.xlabel(x)
         plt.ylabel('f')
 
-    def plot_mu_distribution(self, index):
+    def plot_mu_distribution(self, index, flavour=0):
         '''Plot each of the mu bins'''
         dump = self.dump[index]
 
@@ -213,54 +233,110 @@ class BoltzmannRun:
         nmu = f.shape[4]
 
         f_av = np.mean(f, axis=(1,2,3,5))
+        r = dump.value('r').squeeze()
+        r_if = dump.value('r_if').squeeze()
+
+        l = flavour
 
         for i in range(nmu):
-            plt.plot(f_av[:,i], label = f'{dump.mu[i]:0.2f}')
+            plt.plot(r, f_av[:,i,l], label = f'{dump.mu[i]:0.2f}')
+
+            # # Do reconstruction
+            # f_ghosts = np.zeros(f_av.shape[0]+2)
+            # r_ghosts = np.zeros(f_av.shape[0]+2)
+            # f_ghosts[1:-1] = f_av[:,i,l]
+            # f_ghosts[0] = f_av[0,i,l]
+            # f_ghosts[-1] = f_av[-1,i,l]
+            # r_ghosts[1:-1] = r
+            # r_ghosts[0] = r[0] - (r[1] - r[0])
+            # r_ghosts[-1] = r[-1] + (r[-1] - r[-2])
+            # slope_left = (f_ghosts[1:-1]*r_ghosts[1:-1]**2 - f_ghosts[:-2]*r_ghosts[:-2]**2) / (r_ghosts[1:-1] - r_ghosts[:-2])
+            # slope_right = (f_ghosts[2:]*r_ghosts[2:]**2 - f_ghosts[1:-1]*r_ghosts[1:-1]**2) / (r_ghosts[2:] - r_ghosts[1:-1])
+            # # slope_left = (f_ghosts[1:-1] - f_ghosts[:-2]) / (r_ghosts[1:-1] - r_ghosts[:-2])
+            # # slope_right = (f_ghosts[2:] - f_ghosts[1:-1]) / (r_ghosts[2:] - r_ghosts[1:-1])
+            # slope = np.sign(slope_left) * np.minimum(abs(slope_left), abs(slope_right))
+            # zero_index = slope_left * slope_right < 0.0
+            # slope[zero_index] = 0.0
+            #
+            # # Move center value to avoid divide by zero
+            # r_center = r_if[0]
+            # r_if[0] = r_if[1]
+            #
+            # f_recon = np.zeros(f_av.shape[0]*2)
+            # r_recon = np.zeros(f_av.shape[0]*2)
+            # f_recon[ ::2] = (f_av[:,i,l]*r**2 + slope * (r_if[:-1] - r)) / r_if[:-1]**2
+            # f_recon[1::2] = (f_av[:,i,l]*r**2 + slope * (r_if[1: ] - r)) / r_if[1: ]**2
+            #
+            # # Replace center value
+            # r_if[0] = r_center
+            #
+            # r_recon[ ::2] = r_if[:-1]
+            # r_recon[1::2] = r_if[1:]
+            #
+            # plt.plot(r_recon, f_recon[:], label = f'{dump.mu[i]:0.2f}')
+            # plt.plot(r, f_av[:,i,l], lw = 0.0, marker = 'x', color = 'black')
 
         plt.xlabel('r')
         plt.ylabel('f')
 
         plt.legend()
 
-    def plot_moments(self, index, show_exact=True):
+    def plot_moments(self, index, flavour=0, show_exact=False):
         '''Plot the moments, with an option to compare with exact solution for radiating sphere'''
         dump = self.dump[index]
 
         j, x = self._select_axis(dump.zeroth_number_moment(), 1)
-        h, x = self._select_axis(dump.first_number_moment(), 1)
+        h, x = self._select_axis(dump.first_number_moment(),  1)
         k, x = self._select_axis(dump.second_number_moment(), 1)
-        plt.plot(dump.value('r'), j)
-        plt.plot(dump.value('r'), h)
-        plt.plot(dump.value('r'), k)
 
         if show_exact:
-            exact_moments = dump.radiating_sphere_exact_solution()
-            plt.plot(dump.value('r'), exact_moments[:,0], ls='--', label = 'J')
-            plt.plot(dump.value('r'), exact_moments[:,1], ls='--', label = 'H')
-            plt.plot(dump.value('r'), exact_moments[:,2], ls='--', label = 'K')
+            rgrid, exact_moments = dump.radiating_sphere_exact_solution()
+
+        l = flavour
+
+        plt.figure()
+
+        plt.plot(dump.value('r'), j[:,l], label = 'J')
+        plt.plot(dump.value('r'), h[:,l], label = 'H')
+        plt.plot(dump.value('r'), k[:,l], label = 'K')
+
+        if show_exact:
+            plt.plot(rgrid, exact_moments[l,:,0], ls='--')
+            plt.plot(rgrid, exact_moments[l,:,1], ls='--')
+            plt.plot(rgrid, exact_moments[l,:,2], ls='--')
 
         plt.xlabel('r')
         plt.ylabel('J,H,K')
 
+        plt.title(f't = {dump.time:0.2e}, flavour {l}')
+
         plt.legend()
 
-    def plot_flux_factors(self, index, show_exact=True):
+    def plot_flux_factors(self, index, flavour=0, show_exact=False):
         '''Plot the flux factors, with an option to compare with exact solution for radiating sphere'''
         dump = self.dump[index]
 
         j, x = self._select_axis(dump.zeroth_number_moment(), 1)
-        h, x = self._select_axis(dump.first_number_moment(), 1)
+        h, x = self._select_axis(dump.first_number_moment(),  1)
         k, x = self._select_axis(dump.second_number_moment(), 1)
-        plt.plot(dump.value('r'), h/j)
-        plt.plot(dump.value('r'), k/j)
 
         if show_exact:
-            exact_moments = dump.radiating_sphere_exact_solution()
-            plt.plot(dump.value('r'), exact_moments[:,1]/exact_moments[:,0], ls='--', label = 'H/J')
-            plt.plot(dump.value('r'), exact_moments[:,2]/exact_moments[:,0], ls='--', label = 'K/J')
+            rgrid, exact_moments = dump.radiating_sphere_exact_solution()
+
+        l = flavour
+        plt.figure()
+
+        plt.plot(dump.value('r'), (h/j)[:,l], label = 'H/J')
+        plt.plot(dump.value('r'), (k/j)[:,l], label = 'K/J')
+
+        if show_exact:
+            plt.plot(rgrid, exact_moments[l,:,1]/exact_moments[l,:,0], ls='--')
+            plt.plot(rgrid, exact_moments[l,:,2]/exact_moments[l,:,0], ls='--')
 
         plt.xlabel('r')
         plt.ylabel('H/J, K/J')
+
+        plt.title(f't = {dump.time:0.2e}, flavour {l}')
 
         plt.legend()
 
