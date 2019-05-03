@@ -42,7 +42,8 @@ class BoltzmannDump(Dump):
     def epsvol(self):
         # Note: eps**2 * deps = (4/3) * (eps_if[1]**3 - eps_if[0]**3)
         eps_if = self.value('eps_if')
-        return ( (4.0/3.0) * (eps_if[1:]**3 - eps_if[:-1]**3) )
+        # return ( (4.0/3.0) * (eps_if[1:]**3 - eps_if[:-1]**3) )
+        return ( (1.0/3.0) * (eps_if[1:]**3 - eps_if[:-1]**3) )
 
     def number_density(self):
         f = self.value('f')
