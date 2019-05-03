@@ -161,7 +161,11 @@ class BoltzmannDump(Dump):
         return rgrid, moments
 
     def derived_value(self, name):
-        return getattr(self, name)()
+        value = getattr(self, name)
+        if type(value) is np.ndarray:
+            return value
+        else:
+            return value()
 
     def __repr__(self):
         return self.__str__()
@@ -195,7 +199,7 @@ class BoltzmannRun:
             dump.nflav = dump.value('f').shape[6]
             self.dump += [dump]
 
-    def plot_spatial(self, y, index, direction=1):
+    def plot_spatial(self, y, index, flavour=0, direction=1, energy=0, **kwargs):
         '''Plot y against spatial coordinate'''
 
         dump = self.dump[index]
@@ -203,7 +207,10 @@ class BoltzmannRun:
 
         xval = dump.value(x)
 
-        plt.plot(xval, yval, label=f'{dump.time:4.2f}')
+        if (len(yval.shape) == 3):
+            yval = yval[:,energy,flavour]
+
+        plt.plot(xval, yval, label=f'{dump.time:4.2f}', **kwargs)
 
         plt.xlabel(x)
         plt.ylabel(y)
