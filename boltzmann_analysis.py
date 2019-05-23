@@ -47,8 +47,8 @@ class BoltzmannDump(Dump):
 
     def number_density(self):
         f = self.value('f')
-        domega = self.value('domega')[None,None,None,None,:,:,None]
-        epsvol = self.epsvol()[None,None,None,:,None,None,None]
+        domega = self.value('domega')[None,None,None,:,:,None,None]
+        epsvol = self.epsvol()[None,None,None,None,None,:,None]
 
         return np.sum(f * domega * epsvol, axis = (3,4,5))
 
@@ -57,23 +57,23 @@ class BoltzmannDump(Dump):
 
     def first_number_moment(self):
         f = self.value('f')
-        domega = self.value('domega')[None,None,None,None,:,:,None]
-        epsvol = self.epsvol()[None,None,None,:,None,None,None]
-        mu = self.value('mu')[None,None,None,None,:,None,None]
+        domega = self.value('domega')[None,None,None,:,:,None,None]
+        epsvol = self.epsvol()[None,None,None,None,None,:,None]
+        mu = self.value('mu')[None,None,None,:,None,None,None]
         return np.sum(f * domega * epsvol * mu, axis = (3,4,5)) / (4.0 * np.pi)
 
     def second_number_moment(self):
         f = self.value('f')
-        domega = self.value('domega')[None,None,None,None,:,:,None]
-        epsvol = self.epsvol()[None,None,None,:,None,None,None]
-        mu = self.value('mu')[None,None,None,None,:,None,None]
+        domega = self.value('domega')[None,None,None,:,:,None,None]
+        epsvol = self.epsvol()[None,None,None,None,None,:,None]
+        mu = self.value('mu')[None,None,None,:,None,None,None]
         return np.sum(f * domega * epsvol * mu**2, axis = (3,4,5)) / (4.0 * np.pi)
 
     def energy_density(self):
         f = self.value('f')
-        domega = self.value('domega')[None,None,None,None,:,:,None]
-        eps = self.value('eps')[None,None,None,:,None,None,None]
-        epsvol = self.epsvol()[None,None,None,:,None,None,None]
+        domega = self.value('domega')[None,None,None,:,:,None,None]
+        epsvol = self.epsvol()[None,None,None,None,None,:,None]
+        mu = self.value('mu')[None,None,None,:,None,None,None]
         j = np.sum(f * domega * eps * epsvol, axis = (3,4,5))
         return j
 
@@ -82,17 +82,17 @@ class BoltzmannDump(Dump):
 
     def number_flux_density_radial(self):
         f = self.value('f')
-        mu = self.value('mu')[None,None,None,None,:,None,None]
-        domega = self.value('domega')[None,None,None,None,:,:,None]
-        epsvol = self.epsvol()[None,None,None,:,None,None,None]
+        domega = self.value('domega')[None,None,None,:,:,None,None]
+        epsvol = self.epsvol()[None,None,None,None,None,:,None]
+        mu = self.value('mu')[None,None,None,:,None,None,None]
         return np.sum(f * mu * domega * epsvol, axis = (3,4,5)) / (4.0 * np.pi)
 
     def energy_flux_density_radial(self):
         f = self.value('f')
-        mu = self.value('mu')[None,None,None,None,:,None,None]
-        domega = self.value('domega')[None,None,None,None,:,:,None]
-        eps = self.value('eps')[None,None,None,:,None,None,None]
-        epsvol = self.epsvol()[None,None,None,:,None,None,None]
+        domega = self.value('domega')[None,None,None,:,:,None,None]
+        eps = self.epsvol()[None,None,None,None,None,:,None]
+        epsvol = self.epsvol()[None,None,None,None,None,:,None]
+        mu = self.value('mu')[None,None,None,:,None,None,None]
         return np.sum(f * mu * domega * eps * epsvol, axis = (3,4,5)) / (4.0 * np.pi)
 
     def energy_luminosity(self):
@@ -123,7 +123,7 @@ class BoltzmannDump(Dump):
 
     def spectrum(self):
         f = self.value('f')
-        domega = self.value('domega')[None,None,None,None,:,:,None]
+        domega = self.value('domega')[None,None,None,:,:,None,None]
 
         return np.sum(f * domega, axis = (4,5)) / (4.0 * np.pi)
 
@@ -132,7 +132,7 @@ class BoltzmannDump(Dump):
         f_eq = self.value('f_eq')
 
         eps_if = self.value('eps_if')
-        epsvol = ( (4.0/3.0) * (eps_if[1:]**3 - eps_if[:-1]**3) )
+        epsvol = self.epsvol()
 
         r = self.value('r')
 
@@ -238,9 +238,8 @@ class BoltzmannRun:
         dump = self.dump[index]
 
         f = dump.f
-        nmu = f.shape[4]
-
-        f_av = np.mean(f, axis=(1,2,3,5))
+        nmu = f.shape[3]
+        f_av = np.mean(f, axis=(1,2,4,5))
         r = dump.value('r').squeeze()
         r_if = dump.value('r_if').squeeze()
 
@@ -248,41 +247,6 @@ class BoltzmannRun:
 
         for i in range(nmu):
             plt.plot(r, f_av[:,i,l], label = f'{dump.mu[i]:0.2f}')
-
-            # # Do reconstruction
-            # f_ghosts = np.zeros(f_av.shape[0]+2)
-            # r_ghosts = np.zeros(f_av.shape[0]+2)
-            # f_ghosts[1:-1] = f_av[:,i,l]
-            # f_ghosts[0] = f_av[0,i,l]
-            # f_ghosts[-1] = f_av[-1,i,l]
-            # r_ghosts[1:-1] = r
-            # r_ghosts[0] = r[0] - (r[1] - r[0])
-            # r_ghosts[-1] = r[-1] + (r[-1] - r[-2])
-            # slope_left = (f_ghosts[1:-1]*r_ghosts[1:-1]**2 - f_ghosts[:-2]*r_ghosts[:-2]**2) / (r_ghosts[1:-1] - r_ghosts[:-2])
-            # slope_right = (f_ghosts[2:]*r_ghosts[2:]**2 - f_ghosts[1:-1]*r_ghosts[1:-1]**2) / (r_ghosts[2:] - r_ghosts[1:-1])
-            # # slope_left = (f_ghosts[1:-1] - f_ghosts[:-2]) / (r_ghosts[1:-1] - r_ghosts[:-2])
-            # # slope_right = (f_ghosts[2:] - f_ghosts[1:-1]) / (r_ghosts[2:] - r_ghosts[1:-1])
-            # slope = np.sign(slope_left) * np.minimum(abs(slope_left), abs(slope_right))
-            # zero_index = slope_left * slope_right < 0.0
-            # slope[zero_index] = 0.0
-            #
-            # # Move center value to avoid divide by zero
-            # r_center = r_if[0]
-            # r_if[0] = r_if[1]
-            #
-            # f_recon = np.zeros(f_av.shape[0]*2)
-            # r_recon = np.zeros(f_av.shape[0]*2)
-            # f_recon[ ::2] = (f_av[:,i,l]*r**2 + slope * (r_if[:-1] - r)) / r_if[:-1]**2
-            # f_recon[1::2] = (f_av[:,i,l]*r**2 + slope * (r_if[1: ] - r)) / r_if[1: ]**2
-            #
-            # # Replace center value
-            # r_if[0] = r_center
-            #
-            # r_recon[ ::2] = r_if[:-1]
-            # r_recon[1::2] = r_if[1:]
-            #
-            # plt.plot(r_recon, f_recon[:], label = f'{dump.mu[i]:0.2f}')
-            # plt.plot(r, f_av[:,i,l], lw = 0.0, marker = 'x', color = 'black')
 
         plt.xlabel('r')
         plt.ylabel('f')
