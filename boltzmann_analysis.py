@@ -155,10 +155,10 @@ class BoltzmannDump(Dump):
         moments = np.zeros((self.nflav, ngrid, 3))
 
         for l in range(self.nflav):
-            i_sphere = kappa_a[...,l].max(axis=3).argmin()-1
+            i_sphere = kappa_a[:,0,0,0,l].argmin()-1
             r_sphere = self.value('r')[i_sphere]
-            kappa_a_sphere = kappa_a[...,l].max()
-            f_eq_sphere = f_eq[...,l].max()
+            kappa_a_sphere = kappa_a[:,0,0,0,l].max()
+            f_eq_sphere = f_eq[:,0,0,0,l].max()
 
             i_energy = np.argmax(kappa_a[0,0,0,:,l])
             f_eq_sphere *= epsvol[i_energy]
@@ -294,14 +294,15 @@ class BoltzmannRun:
                      logy=False,
                      show_j=True,
                      show_h=True,
-                     show_k=True
+                     show_k=True,
+                     show_dim=None,
                      ):
         '''Plot the moments, with an option to compare with exact solution for radiating sphere'''
         dump = self.dump[index]
 
-        j, x = self._select_axis(dump.zeroth_number_moment(), 1)
-        h, x = self._select_axis(dump.first_number_moment(),  1)
-        k, x = self._select_axis(dump.second_number_moment(), 1)
+        j, x = self._select_axis(dump.zeroth_number_moment(), 1, show_dim)
+        h, x = self._select_axis(dump.first_number_moment(),  1, show_dim)
+        k, x = self._select_axis(dump.second_number_moment(), 1, show_dim)
 
         if show_exact:
             rgrid, exact_moments = dump.radiating_sphere_exact_solution()
@@ -310,9 +311,9 @@ class BoltzmannRun:
 
         plt.figure()
 
-        if show_j: plt.plot(dump.value('r'), j[:,l], label = 'J')
-        if show_h: plt.plot(dump.value('r'), h[:,l], label = 'H')
-        if show_k: plt.plot(dump.value('r'), k[:,l], label = 'K')
+        if show_j: plt.plot(dump.value('r'), j[...,l], label = 'J')
+        if show_h: plt.plot(dump.value('r'), h[...,l], label = 'H')
+        if show_k: plt.plot(dump.value('r'), k[...,l], label = 'K')
 
         if show_exact:
             if show_j: plt.plot(rgrid, exact_moments[l,:,0], ls='--')
@@ -372,10 +373,13 @@ class BoltzmannRun:
             plt.yscale('log')
 
     @staticmethod
-    def _select_axis(vals, direction):
+    def _select_axis(vals, direction, show_dim=None):
         if direction==1:
             x = 'r'
-            yval = vals.mean(axis=(1,2))
+            if show_dim is None:
+                yval = vals.mean(axis=(1,2))
+            elif show_dim==2: # return all of 2nd dimension
+                yval = vals.mean(axis=(2,))
         elif direction==2:
             x = 'theta'
             yval = vals.mean(axis=(0,2))
