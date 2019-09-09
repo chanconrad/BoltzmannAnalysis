@@ -286,7 +286,16 @@ class BoltzmannRun:
         if logy:
             plt.yscale('log')
 
-    def plot_moments(self, index, flavour=0, show_exact=False, logx=False, logy=False):
+    def plot_moments(self,
+                     index,
+                     flavour=0,
+                     show_exact=False,
+                     logx=False,
+                     logy=False,
+                     show_j=True,
+                     show_h=True,
+                     show_k=True
+                     ):
         '''Plot the moments, with an option to compare with exact solution for radiating sphere'''
         dump = self.dump[index]
 
@@ -301,14 +310,14 @@ class BoltzmannRun:
 
         plt.figure()
 
-        plt.plot(dump.value('r'), j[:,l], label = 'J')
-        plt.plot(dump.value('r'), h[:,l], label = 'H')
-        plt.plot(dump.value('r'), k[:,l], label = 'K')
+        if show_j: plt.plot(dump.value('r'), j[:,l], label = 'J')
+        if show_h: plt.plot(dump.value('r'), h[:,l], label = 'H')
+        if show_k: plt.plot(dump.value('r'), k[:,l], label = 'K')
 
         if show_exact:
-            plt.plot(rgrid, exact_moments[l,:,0], ls='--')
-            plt.plot(rgrid, exact_moments[l,:,1], ls='--')
-            plt.plot(rgrid, exact_moments[l,:,2], ls='--')
+            if show_j: plt.plot(rgrid, exact_moments[l,:,0], ls='--')
+            if show_h: plt.plot(rgrid, exact_moments[l,:,1], ls='--')
+            if show_k: plt.plot(rgrid, exact_moments[l,:,2], ls='--')
 
         plt.xlabel('r')
         plt.ylabel('J,H,K')
