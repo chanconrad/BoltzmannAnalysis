@@ -72,6 +72,7 @@ class BoltzmannDump(Dump):
     def energy_density(self):
         f = self.value('f')
         domega = self.value('domega')[None,None,None,:,:,None,None]
+        eps = self.value('eps')[None,None,None,None,None,:,None]
         epsvol = self.epsvol()[None,None,None,None,None,:,None]
         mu = self.value('mu')[None,None,None,:,None,None,None]
         j = np.sum(f * domega * eps * epsvol, axis = (3,4,5))
@@ -90,7 +91,7 @@ class BoltzmannDump(Dump):
     def energy_flux_density_radial(self):
         f = self.value('f')
         domega = self.value('domega')[None,None,None,:,:,None,None]
-        eps = self.epsvol()[None,None,None,None,None,:,None]
+        eps = self.value('eps')[None,None,None,None,None,:,None]
         epsvol = self.epsvol()[None,None,None,None,None,:,None]
         mu = self.value('mu')[None,None,None,:,None,None,None]
         return np.sum(f * mu * domega * eps * epsvol, axis = (3,4,5)) / (4.0 * np.pi)
@@ -98,6 +99,18 @@ class BoltzmannDump(Dump):
     def energy_luminosity(self):
         # return 16.0 * np.pi**2 * r**2 * self.energy_flux_density_radial()
         return 4.0 * np.pi * self.cross_section_r() * self.energy_flux_density_radial()
+
+    def energy_dldr(self):
+        l = self.energy_luminosity()[:,0,0,:]
+        r = self.value('r')
+
+        dldr = np.zeros_like(l)
+
+        dldr[1:-1,:] = (l[2:,:] - l[:-2,:]) / (r[2:] - r[:-2])[:,None]
+        dldr[0,:] = (l[1,:] - l[0,:]) / (r[1] - r[0])[None]
+        dldr[-1,:] = (l[-1,:] - l[-2,:]) / (r[-1] - r[-2])[None]
+
+        return dldr[:,None,None,:]
 
     def energy_luminosity_lab(self):
         vfluid_r = self.value('vfluid')[:,:,:,0]
@@ -125,7 +138,7 @@ class BoltzmannDump(Dump):
         f = self.value('f')
         domega = self.value('domega')[None,None,None,:,:,None,None]
 
-        return np.sum(f * domega, axis = (4,5)) / (4.0 * np.pi)
+        return np.sum(f * domega, axis = (3,4)) / (4.0 * np.pi)
 
     def radiating_sphere_exact_solution(self):
         kappa_a = self.value('kappa_a')
@@ -199,7 +212,7 @@ class BoltzmannRun:
             dump.nflav = dump.value('f').shape[6]
             self.dump += [dump]
 
-    def plot_spatial(self, y, index, flavour=0, direction=1, energy=0, **kwargs):
+    def plot_spatial(self, y, index, flavour=0, direction=1, energy=0, logx=False, logy=False, **kwargs):
         '''Plot y against spatial coordinate'''
 
         dump = self.dump[index]
@@ -209,13 +222,26 @@ class BoltzmannRun:
 
         if (len(yval.shape) == 3):
             yval = yval[:,energy,flavour]
+        elif (len(yval.shape) == 2):
+            yval = yval[:,flavour]
 
-        plt.plot(xval, yval, label=f'{dump.time:4.2f}', **kwargs)
+        if 'label' in kwargs:
+            label = kwargs.pop('label')
+        else:
+            label = f't={dump.time:4.2f}'
+
+        plt.plot(xval, yval, label=label, **kwargs)
 
         plt.xlabel(x)
         plt.ylabel(y)
 
         plt.legend(title='time')
+
+        if logx:
+            plt.xscale('log')
+
+        if logy:
+            plt.yscale('log')
 
     def plot_spectrum(self, index, direction=1):
         '''Plot spectrum against spatial coordinate'''
@@ -233,27 +259,34 @@ class BoltzmannRun:
         plt.xlabel(x)
         plt.ylabel('f')
 
-    def plot_mu_distribution(self, index, flavour=0):
+    def plot_mu_distribution(self, index, energy=0, flavour=0, logx=False, logy=False):
         '''Plot each of the mu bins'''
         dump = self.dump[index]
 
         f = dump.f
         nmu = f.shape[3]
-        f_av = np.mean(f, axis=(1,2,4,5))
+        f_av = np.mean(f, axis=(1,2,4))
         r = dump.value('r').squeeze()
         r_if = dump.value('r_if').squeeze()
 
+        i = energy
         l = flavour
 
-        for i in range(nmu):
-            plt.plot(r, f_av[:,i,l], label = f'{dump.mu[i]:0.2f}')
+        for j in range(nmu):
+            plt.plot(r, f_av[:,j,i,l], label = f'{dump.mu[j]:0.2f}')
 
         plt.xlabel('r')
         plt.ylabel('f')
 
         plt.legend()
 
-    def plot_moments(self, index, flavour=0, show_exact=False):
+        if logx:
+            plt.xscale('log')
+
+        if logy:
+            plt.yscale('log')
+
+    def plot_moments(self, index, flavour=0, show_exact=False, logx=False, logy=False):
         '''Plot the moments, with an option to compare with exact solution for radiating sphere'''
         dump = self.dump[index]
 
@@ -284,7 +317,13 @@ class BoltzmannRun:
 
         plt.legend()
 
-    def plot_flux_factors(self, index, flavour=0, show_exact=False):
+        if logx:
+            plt.xscale('log')
+
+        if logy:
+            plt.yscale('log')
+
+    def plot_flux_factors(self, index, flavour=0, show_exact=False, logx=False, logy=False, **kwargs):
         '''Plot the flux factors, with an option to compare with exact solution for radiating sphere'''
         dump = self.dump[index]
 
@@ -296,10 +335,15 @@ class BoltzmannRun:
             rgrid, exact_moments = dump.radiating_sphere_exact_solution()
 
         l = flavour
-        plt.figure()
+        # plt.figure()
 
-        plt.plot(dump.value('r'), (h/j)[:,l], label = 'H/J')
-        plt.plot(dump.value('r'), (k/j)[:,l], label = 'K/J')
+        if 'label' in kwargs:
+            label = kwargs.pop('label')
+        else:
+            label = ''
+
+        plt.plot(dump.value('r'), (h/j)[:,l], label = label + ' H/J')
+        plt.plot(dump.value('r'), (k/j)[:,l], label = label + ' K/J')
 
         if show_exact:
             plt.plot(rgrid, exact_moments[l,:,1]/exact_moments[l,:,0], ls='--')
@@ -311,6 +355,12 @@ class BoltzmannRun:
         plt.title(f't = {dump.time:0.2e}, flavour {l}')
 
         plt.legend()
+
+        if logx:
+            plt.xscale('log')
+
+        if logy:
+            plt.yscale('log')
 
     @staticmethod
     def _select_axis(vals, direction):
