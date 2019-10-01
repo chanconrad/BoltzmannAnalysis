@@ -4,6 +4,7 @@ from glob import glob
 import os.path
 import matplotlib.pyplot as plt
 from exact_solutions import RadiatingSphere
+from astropy import constants
 
 class Dump:
     def __init__(self, filename):
@@ -52,6 +53,15 @@ class BoltzmannDump(Dump):
 
         return np.sum(f * domega * epsvol, axis = (3,4,5))
 
+    def number_density_lab(self):
+        f = self.value('f')
+        domega = self.value('domega')[None,None,None,:,:,None,None]
+        epsvol = self.epsvol()[None,None,None,None,None,:,None]
+        phiconf6 = self.value('phiconf')[:,:,:,None,None,None,None]**6
+        u_eul0 = self.u_eul()[:,:,:,0,:,:,None,None]
+
+        return np.sum(f * domega * epsvol * phiconf6 * u_eul0, axis = (3,4,5))
+
     def zeroth_number_moment(self):
         return self.number_density() / (4.0 * np.pi)
 
@@ -75,8 +85,19 @@ class BoltzmannDump(Dump):
         eps = self.value('eps')[None,None,None,None,None,:,None]
         epsvol = self.epsvol()[None,None,None,None,None,:,None]
         mu = self.value('mu')[None,None,None,:,None,None,None]
-        j = np.sum(f * domega * eps * epsvol, axis = (3,4,5))
-        return j
+
+        return np.sum(f * domega * eps * epsvol, axis = (3,4,5))
+
+    def energy_density_lab(self):
+        f = self.value('f')
+        domega = self.value('domega')[None,None,None,:,:,None,None]
+        eps = self.value('eps')[None,None,None,None,None,:,None]
+        epsvol = self.epsvol()[None,None,None,None,None,:,None]
+        mu = self.value('mu')[None,None,None,:,None,None,None]
+        phiconf6 = self.value('phiconf')[:,:,:,None,None,None,None]**6
+        u_eul0 = self.u_eul()[:,:,:,0,:,:,None,None]
+
+        return np.sum(f * domega * eps * epsvol * phiconf6 * u_eul0, axis = (3,4,5))
 
     def zeroth_energy_moment(self):
         return self.energy_density() / (4.0 * np.pi)
@@ -172,6 +193,51 @@ class BoltzmannDump(Dump):
                 moments[l,i,2] = k
 
         return rgrid, moments
+
+    def lambda_transform(self, v):
+        beta = v / self.value('clight')
+        beta2 = np.sum(beta**2)
+        if beta2 > 0.0:
+            betai2 = 1.0 / beta2
+        else:
+            betai2 = 1.0
+        gamma = 1.0 / (np.sqrt(1.0 - beta2))
+
+        lam = np.zeros((4,4))
+
+        lam[0,0] = gamma
+        lam[1,0] = gamma * beta[0]
+        lam[2,0] = gamma * beta[1]
+        lam[3,0] = gamma * beta[2]
+        lam[0,1] = lam[1,0]
+        lam[1,1] = 1.0 + (gamma-1) * beta[0] * beta[0] * betai2
+        lam[2,1] =       (gamma-1) * beta[1] * beta[0] * betai2
+        lam[3,1] =       (gamma-1) * beta[2] * beta[0] * betai2
+        lam[0,2] = lam[2,0]
+        lam[1,2] = lam[2,1]
+        lam[2,2] = 1.0 + (gamma-1) * beta[1] * beta[1] * betai2
+        lam[3,2] =       (gamma-1) * beta[2] * beta[1] * betai2
+        lam[0,3] = lam[3,0]
+        lam[1,3] = lam[3,1]
+        lam[2,3] = lam[3,2]
+        lam[3,3] = 1.0 + (gamma-1) * beta[2] * beta[2] * betai2
+
+        return lam
+
+    def u_eul(self):
+        u_com = self.value('u_com')
+        vfluid = self.value('vfluid')
+        u = np.zeros((vfluid.shape[0], vfluid.shape[1], vfluid.shape[2], u_com.shape[0], u_com.shape[1], u_com.shape[2]))
+
+        for a in range(vfluid.shape[0]):
+            for b in range(vfluid.shape[1]):
+                for c in range(vfluid.shape[2]):
+                    lam = self.lambda_transform(vfluid[a,b,c])
+                    for j in range(u_com.shape[1]):
+                        for k in range(u_com.shape[2]):
+                            u[a,b,c,:,j,k] = np.matmul(lam, u_com[:,j,k])
+
+        return u
 
     def derived_value(self, name):
         value = getattr(self, name)
