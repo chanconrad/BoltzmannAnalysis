@@ -58,7 +58,7 @@ class BoltzmannDump(Dump):
         domega = self.value('domega')[None,None,None,:,:,None,None]
         epsvol = self.epsvol()[None,None,None,None,None,:,None]
         phiconf6 = self.value('phiconf')[:,:,:,None,None,None,None]**6
-        u_eul0 = self.u_eul()[:,:,:,0,:,:,None,None]
+        u_eul0 = self.u_eul()[:,:,:,:,:,0,None,None]
 
         return np.sum(f * domega * epsvol * phiconf6 * u_eul0, axis = (3,4,5))
 
@@ -95,7 +95,7 @@ class BoltzmannDump(Dump):
         epsvol = self.epsvol()[None,None,None,None,None,:,None]
         mu = self.value('mu')[None,None,None,:,None,None,None]
         phiconf6 = self.value('phiconf')[:,:,:,None,None,None,None]**6
-        u_eul0 = self.u_eul()[:,:,:,0,:,:,None,None]
+        u_eul0 = self.u_eul()[:,:,:,:,:,0,None,None]
 
         return np.sum(f * domega * eps * epsvol * phiconf6 * u_eul0, axis = (3,4,5))
 
@@ -233,9 +233,9 @@ class BoltzmannDump(Dump):
             for b in range(vfluid.shape[1]):
                 for c in range(vfluid.shape[2]):
                     lam = self.lambda_transform(vfluid[a,b,c])
-                    for j in range(u_com.shape[1]):
-                        for k in range(u_com.shape[2]):
-                            u[a,b,c,:,j,k] = np.matmul(lam, u_com[:,j,k])
+                    for j in range(u_com.shape[0]):
+                        for k in range(u_com.shape[1]):
+                            u[a,b,c,j,k,:] = np.matmul(lam, u_com[j,k,:])
 
         return u
 
