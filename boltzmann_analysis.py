@@ -36,7 +36,7 @@ class BoltzmannDump(Dump):
         # Cross section (area_r) at the center of the cell
         # cs = 0.25 * area_r[:-1,:,:] + 0.25 * area_r[1:,:,:] + 0.5 * area_r[1:,:,:] * r_if[:-1,:,:] / r_if[1:,:,:]
 
-        cs = 4.0*np.pi*self.value('r')[:,None,None,None]**2
+        cs = 4.0*np.pi*self.value('r')[:,None,None]**2
 
         return cs
 
@@ -119,7 +119,7 @@ class BoltzmannDump(Dump):
 
     def energy_luminosity(self):
         # return 16.0 * np.pi**2 * r**2 * self.energy_flux_density_radial()
-        return 4.0 * np.pi * self.cross_section_r() * self.energy_flux_density_radial()
+        return 4.0 * np.pi * self.cross_section_r()[:,:,:,None]  * self.energy_flux_density_radial()
 
     def energy_dldr(self):
         l = self.energy_luminosity()[:,0,0,:]
@@ -136,17 +136,31 @@ class BoltzmannDump(Dump):
     def energy_luminosity_lab(self):
         vfluid_r = self.value('vfluid')[:,:,:,0]
         factor = (1.0 + vfluid_r) / (1.0 - vfluid_r)
-        return self.energy_luminosity() * factor[:,None]
+
+        alpha = self.value('alpha')[:,:,:]
+        phiconf = self.value('phiconf')[:,:,:]
+
+        factor *= alpha**2 * phiconf**4
+
+        return self.energy_luminosity() * factor[:,:,:,None]
 
     def number_luminosity(self):
         # return 16.0 * np.pi**2 * r**2 * self.number_flux_density_radial()
-        return 4.0 * np.pi * self.cross_section_r() * self.number_flux_density_radial()
+        return 4.0 * np.pi * self.cross_section_r()[:,:,:,None] * self.number_flux_density_radial()
 
     def number_luminosity_lab(self):
         vfluid_r = self.value('vfluid')[:,:,:,0]
         factor = self.gamma() * (1.0 + vfluid_r)
 
-        return self.number_luminosity() * factor[:,None]
+        alpha = self.value('alpha')[:,:,:]
+        phiconf = self.value('phiconf')[:,:,:]
+
+        factor *= alpha * phiconf**4
+
+        return self.number_luminosity() * factor[:,:,:,None]
+
+    def mean_energy(self):
+        return self.energy_density() / self.number_density()
 
     def gamma(self):
         vfluid = self.value('vfluid')
@@ -273,7 +287,7 @@ class BoltzmannRun:
         for i, file in enumerate(self.dump_files):
             dump = BoltzmannDump(file)
             ind = int(dump.value('index'))
-            assert ind > current_index, 'Files out of order'
+            assert ind >= current_index, 'Files out of order' # >= for CocoNuT repeats
             current_index = ind
             dump.nflav = dump.value('f').shape[6]
             self.dump += [dump]
