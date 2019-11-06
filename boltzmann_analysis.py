@@ -72,6 +72,15 @@ class BoltzmannDump(Dump):
         mu = self.value('mu')[None,None,None,:,None,None,None]
         return np.sum(f * domega * epsvol * mu, axis = (3,4,5)) / (4.0 * np.pi)
 
+    def first_number_moment_theta(self):
+        f = self.value('f')
+        domega = self.value('domega')[None,None,None,:,:,None,None]
+        epsvol = self.epsvol()[None,None,None,None,None,:,None]
+        mu = self.value('mu')[None,None,None,:,None,None,None]
+        psi = self.value('psi')[None,None,None,None,:,None,None]
+
+        return np.sum(f * domega * epsvol * np.sqrt(1.0 - mu**2) * np.cos(psi), axis = (3,4,5)) / (4.0 * np.pi)
+
     def second_number_moment(self):
         f = self.value('f')
         domega = self.value('domega')[None,None,None,:,:,None,None]
