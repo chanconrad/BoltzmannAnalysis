@@ -1,8 +1,9 @@
-'''
+"""
 Exact solutions
-'''
+"""
 
 import numpy as np
+
 
 class RadiatingSphere:
     def __init__(self, r_sphere, kappa_a_sphere, f_eq_sphere, nmu=1000):
@@ -18,17 +19,17 @@ class RadiatingSphere:
         h = 0.0
         k = 0.0
 
-        for i in range(self.nmu-1):
-            intensity = self.intensity(r, 0.5*(mu_range[i]+mu_range[i+1]))
+        for i in range(self.nmu - 1):
+            intensity = self.intensity(r, 0.5 * (mu_range[i] + mu_range[i + 1]))
             dmu = 2.0 / float(self.nmu)
-            st_l = np.sqrt(1.0 - mu_range[i]**2)
-            st_r = np.sqrt(1.0 - mu_range[i+1]**2)
-            st = 0.5*(st_l+st_r)
-            ds = np.sqrt((st_l-st_r)**2 + dmu**2)
+            st_l = np.sqrt(1.0 - mu_range[i] ** 2)
+            st_r = np.sqrt(1.0 - mu_range[i + 1] ** 2)
+            st = 0.5 * (st_l + st_r)
+            ds = np.sqrt((st_l - st_r) ** 2 + dmu ** 2)
             domega = st * ds
             j += intensity * domega
             h += intensity * domega * mu_range[i]
-            k += intensity * domega * mu_range[i]**2
+            k += intensity * domega * mu_range[i] ** 2
 
         j /= 2.0
         h /= 2.0
@@ -40,7 +41,7 @@ class RadiatingSphere:
         if r < self.r_sphere:
             s = r * mu + self.r_sphere * self.g(r, mu)
         else:
-            x = np.sqrt(1.0 - (self.r_sphere/r)**2)
+            x = np.sqrt(1.0 - (self.r_sphere / r) ** 2)
             if x <= mu:
                 s = 2.0 * self.r_sphere * self.g(r, mu)
             else:
@@ -49,4 +50,4 @@ class RadiatingSphere:
         return self.f_eq_sphere * (1.0 - np.exp(-self.kappa_a_sphere * s))
 
     def g(self, r, mu):
-        return np.sqrt(1.0 - (r/self.r_sphere)**2 * (1.0-mu**2))
+        return np.sqrt(1.0 - (r / self.r_sphere) ** 2 * (1.0 - mu ** 2))
